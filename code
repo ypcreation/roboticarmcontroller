@@ -1,0 +1,64 @@
+import tkinter as tk
+from tkinter import ttk
+import serial
+import time
+
+class RoboticArmGUI:
+    def __init__(self, master):
+        self.master = master
+        master.title("YP ROBOTIC - Robotic Arm Controller")
+
+        self.label_top = tk.Label(master, text="YP ROBOTIC", font=("Helvetica", 16, "bold"))
+        self.label_top.pack(pady=10)
+
+        self.label_title = tk.Label(master, text="Robotic Arm Controller", font=("Helvetica", 14, "bold"))
+        self.label_title.pack(pady=10)
+
+        self.sliders = []
+        for i in range(4):
+            slider_label = tk.Label(master, text=f"Servo {i+1} Position")
+            slider_label.pack()
+            slider = ttk.Scale(master, from_=0, to=180, orient=tk.HORIZONTAL, length=200, command=self.update_servos)
+            slider.pack()
+            self.sliders.append(slider)
+
+        self.record_button = tk.Button(master, text="Record", command=self.record_positions)
+        self.record_button.pack(pady=10)
+
+        self.play_button = tk.Button(master, text="Play", command=self.play_positions)
+        self.play_button.pack(pady=10)
+
+        self.serial_connection = None
+        # Update the serial port name based on your Arduino connection
+        self.serial_port = "COM3"  # Change this to match your Arduino port
+
+        try:
+            self.serial_connection = serial.Serial(self.serial_port, 9600, timeout=1)
+            time.sleep(2)  # Wait for the connection to be established
+        except serial.SerialException:
+            print(f"Error: Unable to establish connection to {self.serial_port}")
+
+    def update_servos(self, *args):
+        servo_positions = [int(slider.get()) for slider in self.sliders]
+        self.send_servo_positions(servo_positions)
+
+    def send_servo_positions(self, positions):
+        if self.serial_connection:
+            message = ",".join(map(str, positions)) + "\n"
+            self.serial_connection.write(message.encode())
+
+    def record_positions(self):
+        positions = [int(slider.get()) for slider in self.sliders]
+        self.recorded_positions.append(positions)
+
+    def play_positions(self):
+        while True:
+            for recorded_position in self.recorded_positions:
+                self.send_servo_positions(recorded_position)
+                time.sleep(0.5)  # Adjust the delay as needed
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = RoboticArmGUI(root)
+    app.recorded_positions = []  # List to store recorded positions
+    root.mainloop()
